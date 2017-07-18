@@ -1,0 +1,206 @@
+---
+title: "Содержание азота в растениях у реки Иордан"
+author: "Бобров Евгений, 417"
+date: '`r Sys.Date()`'
+output:
+  html_document: default
+  pdf_document: default
+---
+
+#Постановка задачи
+
+Четыре вида растений: Leucaena leucocephala, Acacia saligna, Prosopis juliflora, Eucalyptus citriodora, которые могут расти в долине реки Иордан, где климат достаточно засушливый, выращивались в лаборатории при разных условиях доступа к воде. Количество воды, получаемой растением в сутки, менялось в разных группах от $50$ до $650$ мм с шагом $100$ мм. Исследователей интересовала возможность их использования для кормления сельскохозяйственных животных, для чего необходимо высокое содержание азота. Для $9$ растений в каждой группе известно содержание азота.
+
+* Как содержание азота меняется для разных видов растений при разных условиях выращивания?
+* Какие растения лучше всего подходят для сельскохозяйственного использования?
+
+#Вступление
+
+Загрузка данных.
+
+```{r}
+plants = read.csv("plants.csv", sep = ";", header = T, dec=",", colClasses = c("pctnit"="numeric"))
+leucaena = subset(plants, species=="Leucaena leucocephala")
+acacia = subset(plants, species=="Acacia saligna")
+eucalyptus = subset(plants, species=="Eucalyptus citriodora")
+prosopis = subset(plants, species=="Prosopis juliflora")
+```
+
+Данные очень хорошо подходят для исследований и доказательства различных гипотез: размер каждой группы растений одинаков и равен $63$.
+
+```{r}
+sapply(unique(plants$species), function(t) dim(plants[plants$species==t,])[1])
+```
+
+И количество замеров азота тоже равно по каждому растению и по каждому уровню воды и равно $9$. Здесь можно видеть матрицу сопряжённости. Для четырёх групп растений и семи групп уровней воды. Все ячейки содержат одинаковое число элементов, что гарантирует корректное проведение двухфакторного дисперсионного анализа.
+
+```{r}
+sapply(unique(plants$species), function(name) sapply(seq(50, 650, 100), function(level) dim(plants[plants$species==name & plants$water==level,])[1]))
+```
+
+#Первый вопрос
+
+Как содержание азота меняется для разных видов растений при разных условиях выращивания. Требуется найти благоприятные условия выращивания растений.
+
+Исследуем, как меняется содержание азота при разных условиях для всех растений в совокупности. Проведём двухфакторный анализ учитывая взаимодействие факторов: уровня воды и вида растения. Вид растения существенно влияет на содержание азота $\alpha < 2 * 10^{-16}$, уровень воды влияет несущественно $\alpha = 0.118$. Однако между этими двумя факторами есть взаимодействие $\alpha = 2.71*10^{-9}$!
+
+```{r fig.width=10, warning=FALSE}
+boxplot(pctnit ~ water*species, plants, ylab="pctnit")
+boxplot(pctnit ~ water, plants, ylab="pctnit", xlab="water")
+boxplot(pctnit ~ species, plants, ylab="pctnit", xlab="species")
+summary(aov(pctnit ~ species*water, plants))
+```
+
+Дальше разобьём выборку на группы по растениям и проведём анализ отдельно для каждого. Применим дисперсионный анализ. Построим таблицы для среднего показателя азота. Нарисуем графики для визуальной качественной оценки. Применим критерий HSD Тьюки для попарного сравнения уровней воды по содержанию азота для статистического обоснования принятия решения. Результаты HSD показывают, что найденный лучший уровень воды значимо отличается от большинства остальных. В каждой группе оставим замеры при оптимальных условиях: для уровня, на котором растение вбирает наибольшее количество азота. 
+
+###Leucaena leucocephala
+
+Благоприятные условия для leucaena: $650 мм$ воды.
+
+```{r, fig.width=10}
+boxplot(pctnit~water, leucaena)
+a1 = aov(pctnit ~ as.factor(water), leucaena)
+TukeyHSD(a1)
+summary(a1)
+q1 = unlist(model.tables(a1, type="mean")$tables[1])
+m1 = unlist(model.tables(a1, type="mean")$tables[2])
+e1 = unlist(model.tables(a1, type="effects")$tables)
+names(m1) = seq(50, 650, 100)
+names(e1) = seq(50, 650, 100)
+m1
+```
+
+
+### Acacia saligna
+
+Благоприятные условия для acacia: $50 мм$ воды.
+
+```{r, fig.width=10}
+boxplot(pctnit ~ water, acacia)
+a2 = aov(pctnit ~ as.factor(water), acacia)
+TukeyHSD(a2)
+summary(a2)
+q2 = unlist(model.tables(a2, type="mean")$tables[1])
+m2 = unlist(model.tables(a2, type="mean")$tables[2])
+e2 = unlist(model.tables(a2, type="effects")$tables)
+names(m2) = seq(50, 650, 100)
+names(e2) = seq(50, 650, 100)
+m2
+```
+
+
+### Eucalyptus citriodora.
+
+Благоприятные условия для eucalyptus: $50 мм$ воды.
+
+```{r, fig.width=10}
+boxplot(pctnit ~ water, eucalyptus)
+a3 = aov(pctnit ~ as.factor(water), eucalyptus)
+TukeyHSD(a3)
+summary(a3)
+q3 = unlist(model.tables(a3, type="mean")$tables[1])
+m3 = unlist(model.tables(a3, type="mean")$tables[2])
+e3 = unlist(model.tables(a3, type="effects")$tables)
+names(m3) = seq(50, 650, 100)
+names(e3) = seq(50, 650, 100)
+m3
+```
+
+
+### Prosopis juliflora.
+
+Благоприятные условия для prosopis: $650 мм$ воды.
+
+```{r, fig.width=10}
+boxplot(pctnit ~ water, prosopis)
+a4 = aov(pctnit ~ as.factor(water), prosopis)
+TukeyHSD(a4)
+summary(a4)
+q4 = unlist(model.tables(a4, type="mean")$tables[1])
+m4 = unlist(model.tables(a4, type="mean")$tables[2])
+e4 = unlist(model.tables(a4, type="effects")$tables)
+names(m4) = seq(50, 650, 100)
+names(e4) = seq(50, 650, 100)
+m4
+```
+
+
+#Второй вопрос
+
+Требуется определить оптимальные для выращивания растения. Для каждого растения выберем оптимальный для него уровень воды. 
+
+```{r}
+plants = subset(plants, species=="Leucaena leucocephala" & water==650 | species=="Acacia saligna" & water==50 | species=="Eucalyptus citriodora" & water==50 | species=="Prosopis juliflora" & water==650)[, -2]
+```
+
+Дальше попарно сравним распределения азота по растениям. Тогда leucaena и prosopis содержат наибольшее среднее содержание азота соответственно: $3.333\%$ и $3.544\%$. Против $1.423\%$ и $2.422\%$ eucalyptus и acacia. Однако leucaena и prosopis не различаются значимо статистически. Остальные же пары отличаются между собой по критерию. Тогда для сельскохозяйственного использования лучше всего подходят как leucaena, так и prosopis, при достаточном для них уровне воды в $650 мм$.
+
+```{r, fig.width=10}
+boxplot(pctnit~species, plants, ylab="pctnit")
+a5 = aov(pctnit~species, plants)
+TukeyHSD(a5)
+summary(a5)
+q5 = unlist(model.tables(a5, type="mean")$tables[1])
+m5 = unlist(model.tables(a5, type="mean")$tables[2])
+e5 = unlist(model.tables(a5, type="effects")$tables)
+m5
+```
+
+#Выводы
+
+Графически отобразим зависимость средней доли азота по уровням воды для всех видов растений. Сформулируем ответы к поставленной задаче. Самое лучшее для зверей растение -- Prosopis juliflora. Наиболее благоприятный уровень воды для Prosopis juliflora: $650 мм$. Для Leucaena leucocephala благоприятный уровень: $650 мм$. И это растение на втором месте по пригодности после Prosopis juliflora. На третьем -- Acacia saligna. И благоприятный уровень воды для неё: $50 мм$. На последнем -- Eucalyptus citriodora. Эвкалипт хорошо собирает азот при уровнях воды в $50 мм$.
+
+```{r, fig.width=10}
+x = seq(50, 650, 100)
+par(mar=c(5, 4, 4, 15), xpd=TRUE)
+plot(x, m1, col="red", pch=8, main="mean pctnit for all kind of water levels", ylim=c(1,3.5))
+points(x, m2, pch=8, col="green")
+points(x, m3, pch=8, col="brown")
+points(x, m4, pch=8,  col="blue")
+legend("topright", inset=c(-0.4,0), legend=c("Leucaena leucocephala", "Acacia saligna", "Eucalyptus citriodora", "Prosopis juliflora"), pch=c(8,8,8,8), col=c("red", "green", "brown", "blue"), title="species")
+```
+
+Уровни воды: 50, 150, 250, 350, 450, 550, 650.
+
+$leucaena$
+
+* Распределение азота по уровням: `r m1`;
+* Среднее содержание азота: `r q1`;
+* Отклонение азота от среднего: `r e1`;
+* Благоприятные условия для acacia: `r names(which.max(m1))` мм воды;
+
+$acacia$
+
+* Распределение азота по уровням: `r m2`;
+* Среднее содержание азота: `r q2`;
+* Отклонение азота от среднего: `r e2`;
+* Благоприятные условия для acacia: `r names(which.max(m2))` мм воды;
+
+$eucalyptus$
+
+* Распределение азота по уровням: `r m3`;
+* Среднее содержание азота: `r q3`;
+* Отклонение азота от среднего: `r e3`;
+* Благоприятные условия для acacia: `r names(which.max(m3))` мм воды;
+
+$prosopis$
+
+* Распределение азота по уровням: `r m4`;
+* Среднее содержание азота: `r q4`;
+* Отклонение азота от среднего: `r e4`;
+* Благоприятные условия для acacia: `r names(which.max(m4))` мм воды;
+
+
+```{r fig.width=10}
+barplot(m5, names.arg = c("Acacia saligna", "Eucalyptus citriodora", "Leucaena leucocephala", "Prosopis juliflora"))
+```
+
+Виды растений: "Leucaena leucocephala", "Acacia saligna", "Eucalyptus citriodora", "Prosopis juliflora".
+
+* Распределение азота по видам: `r m5`;
+* Среднее содержание азота: `r q5`;
+* Отклонение азота от среднего: `r e5`;
+
+Лучшие растения для сельскохозяйственного использования: "Prosopis juliflora" и "Leucaena leucocephala". Больше всего азота в них достигается при уровне воды в $650 мм$.
+
+******************
