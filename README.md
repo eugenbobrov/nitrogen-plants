@@ -1,3 +1,5 @@
+ analysis of variance as statistical provement
+
 Постановка задачи
 =================
 
